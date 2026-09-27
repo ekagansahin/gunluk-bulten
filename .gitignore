@@ -1,0 +1,6 @@
+# gizli anahtarlar — asla repoya girmesin
+.env
+# günlük ham yanıtlar
+ham/
+__pycache__/
+*.pyc

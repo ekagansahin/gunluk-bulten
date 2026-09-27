@@ -1,0 +1,46 @@
+name: Günlük bülten
+
+on:
+  schedule:
+    # 04:20 UTC = 07:20 TSİ. GitHub zamanlanmış işleri 5-15 dk geciktirebildiği için
+    # 07:30 civarında gelmesi hedefleniyor.
+    - cron: "20 4 * * *"
+  workflow_dispatch: {}   # Actions sekmesinden elle çalıştırmak için
+
+jobs:
+  bulten:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TZ: Europe/Istanbul
+      TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      NASA_API_KEY: ${{ secrets.NASA_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Bülteni gönder
+        run: python bulten.py
+
+      - name: Ham yanıtları sakla (7 gün)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ham-${{ github.run_id }}
+          path: ham/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Hata olursa Telegram'a haber ver
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d text="⚠️ Günlük bülten çalışmadı: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
