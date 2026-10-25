@@ -13,6 +13,7 @@ Kullanım:
 """
 import argparse
 import datetime as dt
+import html
 import json
 import os
 import re
@@ -222,22 +223,35 @@ def telegram_gonder(sonuclar, zaman):
     # NASA günün astronomi fotoğrafı
     for api, s in sonuclar:
         if api["id"] == "nasa_apod" and durum(s) == "✅":
-            apod_gonder(token, chat_id, json.loads(s["govde"]))
+            veri = json.loads(s["govde"])
+            apod_gonder(token, chat_id, veri[0] if isinstance(veri, list) else veri)
+
+
+def apod_temizle(s):
+    """science.nasa.gov metinleri HTML geliyor: etiketleri ve 'Explanation:' önekini atar."""
+    s = html.unescape(re.sub(r"<[^>]+>", "", str(s or "")))
+    return re.sub(r"^\s*Explanation:\s*", "", s).strip()
 
 
 def apod_gonder(token, chat_id, veri):
+    # science.nasa.gov biçimi: görsel hdurl'de (video günlerinde kapak görseli), url makale sayfası
     baslik = f"🔭 NASA — Günün Astronomi Fotoğrafı\n{veri.get('title', '')} ({veri.get('date', '')})"
     if veri.get("copyright"):
-        baslik += f"\n© {veri['copyright'].strip()}"
-    if veri.get("media_type") == "image":
-        cevap = tg(token, "sendPhoto", chat_id=chat_id, photo=veri.get("hdurl") or veri["url"],
-                   caption=baslik[:1024])
-        if not cevap.get("ok"):  # HD dosya çok büyükse normal çözünürlüğü dene
-            cevap = tg(token, "sendPhoto", chat_id=chat_id, photo=veri["url"], caption=baslik[:1024])
-    else:  # bazı günler video oluyor
-        cevap = tg(token, "sendMessage", chat_id=chat_id, text=f"{baslik}\n🎬 {veri.get('url', '')}")
+        baslik += f"\n© {apod_temizle(veri['copyright'])}"
+    if veri.get("media_type") != "image":
+        baslik += "\n🎬 Bugün video var, linke bak"
+    sayfa = veri.get("permalink") or veri.get("url", "")
+    cevap = {"ok": False}
+    gorsel = veri.get("hdurl")
+    if gorsel:
+        cevap = tg(token, "sendPhoto", chat_id=chat_id, photo=gorsel, caption=f"{baslik}\n{sayfa}"[:1024])
+        if not cevap.get("ok"):  # HD dosya Telegram'ın 5 MB sınırını aşarsa küçültülmüş hali
+            cevap = tg(token, "sendPhoto", chat_id=chat_id, photo=gorsel.split("?")[0] + "?w=1280",
+                       caption=f"{baslik}\n{sayfa}"[:1024])
+    if not cevap.get("ok"):
+        cevap = tg(token, "sendMessage", chat_id=chat_id, text=f"{baslik}\n{sayfa}")
     if cevap.get("ok") and veri.get("explanation"):
-        tg(token, "sendMessage", chat_id=chat_id, text=veri["explanation"][:4000])
+        tg(token, "sendMessage", chat_id=chat_id, text=apod_temizle(veri["explanation"])[:4000])
     print("Telegram: APOD gönderildi." if cevap.get("ok") else f"Telegram APOD hatası: {cevap.get('description')}")
 
 

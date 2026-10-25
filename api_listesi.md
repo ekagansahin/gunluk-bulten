@@ -39,7 +39,7 @@ Anahtar: `yok` · `ücretsiz` (kayıt gerekir) · `DEMO` (anahtarsız da sınır
 
 ## 4. Genel
 - [x] wiki_bugun | Wikipedia "Bugün tarihte" (TR) | yok | ✅ | https://api.wikimedia.org/feed/v1/wikipedia/tr/onthisday/all/{AA}/{GG} | Türkçe
-- [x] nasa_apod | NASA günün astronomi fotoğrafı | .env: NASA_API_KEY | ✅ | https://api.nasa.gov/planetary/apod?api_key={NASA_API_KEY} | Kendi anahtarınla çalışıyor. Görsel Telegram'da fotoğraf olarak gönderilebilir
+- [x] nasa_apod | NASA günün astronomi fotoğrafı | yok | ✅ | https://science.nasa.gov/wp-json/wp/v2/apod-basic?per_page=1 | Eski api.nasa.gov/planetary/apod Eylül 2026 sonundan beri 500 veriyor; APOD science.nasa.gov'a taşındı (25.10.2026). Anahtar gerekmiyor. Yanıt liste döner; görsel hdurl'de, url makale sayfası, metinler HTML
 - [ ] uzay_haber | Spaceflight News | yok | ✅ | https://api.spaceflightnewsapi.net/v4/articles/?limit=3 | Uzay haberleri
 - [ ] roket | Yaklaşan roket fırlatmaları | yok | ✅ | https://ll.thespacedevs.com/2.3.0/launches/upcoming/?limit=3 | Anahtarsız kullanımda saatlik limit var, günde 1 çağrı yeterli
 - [ ] iss | Uzaydaki insanlar | yok | ✅ | http://api.open-notify.org/astros.json | Küçük bir bilgi satırı olarak

@@ -10,4 +10,6 @@ Kişisel kullanım için: seçili açık API'lerden veriyi her sabah çekip Tele
 | `.github/workflows/bulten.yml` | Her gün 07:20 TSİ'de GitHub Actions ile çalıştırır |
 
 Gerekli anahtarlar (yerelde `.env`, GitHub'da Settings → Secrets → Actions):
-`TELEGRAM_TOKEN`, `TELEGRAM_CHAT_ID`, `NASA_API_KEY`
+`TELEGRAM_TOKEN`, `TELEGRAM_CHAT_ID`
+
+NASA APOD artık science.nasa.gov üzerinden anahtarsız çekiliyor; `NASA_API_KEY` gerekmiyor.

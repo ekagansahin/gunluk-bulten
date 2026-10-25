@@ -201,13 +201,28 @@ def f_wiki_bugun(b):
     return [f"{x.get('year', '')}: {kisalt(x['text'], 200)}" for x in d.get("selected", [])[:5]], []
 
 
+def html_temizle(s):
+    """science.nasa.gov metinleri HTML geliyor: etiketleri ve 'Explanation:' önekini atar."""
+    s = html.unescape(re.sub(r"<[^>]+>", "", str(s or "")))
+    return re.sub(r"^\s*Explanation:\s*", "", s).strip()
+
+
 def f_nasa_apod(b):
+    # science.nasa.gov/wp-json/wp/v2/apod-basic: liste döner; görsel hdurl'de, url makale sayfası
     d = J(b)
-    s = [f"{d.get('title')} ({d.get('date')})", kisalt(d.get("explanation"), 400)]
-    if d.get("media_type") == "image":
-        return s, [(d.get("hdurl") or d["url"], f"🔭 {d.get('title')}", d["url"])]
-    s.append(f"🎬 {d.get('url')}")
-    return s, []
+    d = d[0] if isinstance(d, list) else d
+    sayfa = d.get("permalink") or d.get("url")
+    s = [f"{d.get('title')} ({d.get('date')})", kisalt(html_temizle(d.get("explanation")), 400)]
+    if d.get("media_type") != "image":  # video günü: hdurl kapak görseli, video linki basic_html içinde
+        m = re.search(r'<(?:iframe|video|source)[^>]*\ssrc="([^"]+)"', d.get("basic_html") or "")
+        video = m.group(1) if m else sayfa
+        s.append(f"🎬 {'https:' + video if video.startswith('//') else video}")
+    s.append(sayfa)
+    gorsel = d.get("hdurl")
+    if not gorsel:
+        return s, []
+    # yedek: HD dosya Telegram'ın 5 MB sınırını aşarsa 1280 px genişlikte küçültülmüş hali
+    return s, [(gorsel, f"🔭 {d.get('title')}", gorsel.split("?")[0] + "?w=1280")]
 
 
 def f_uzay_haber(b):
@@ -310,7 +325,7 @@ def medya_gonder(token, chat_id, url, baslik, yedek, kuru):
     if kuru:
         print(f"  [medya] {baslik} → {url}")
         return
-    uz = url.lower().rsplit(".", 1)[-1]
+    uz = url.lower().split("?")[0].rsplit(".", 1)[-1]  # science.nasa.gov görsel linklerinde ?w=... var
     yontem, alan = ("sendVideo", "video") if uz in ("mp4", "webm") else \
                    ("sendAnimation", "animation") if uz == "gif" else ("sendPhoto", "photo")
     c = tg(token, yontem, chat_id=chat_id, **{alan: url}, caption=baslik[:1024])
