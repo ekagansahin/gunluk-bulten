@@ -7,7 +7,7 @@ Kişisel kullanım için: seçili açık API'lerden veriyi her sabah çekip Tele
 | `api_listesi.md` | API'ler ve seçimler (`[x]` = bültende) |
 | `bulten.py` | Bülteni oluşturup kategori kategori Telegram'a gönderir (`--hepsi`, `--kuru`) |
 | `api_test.py` | API'leri test eder, `api_katalog.md` raporunu yazar |
-| `.github/workflows/bulten.yml` | Her gün 07:20 TSİ'de GitHub Actions ile çalıştırır |
+| `.github/workflows/bulten.yml` | Her sabah 07:00 TSİ'den sonraki ilk denemede GitHub Actions ile gönderir (gecikme açıklaması dosyada) |
 
 Gerekli anahtarlar (yerelde `.env`, GitHub'da Settings → Secrets → Actions):
 `TELEGRAM_TOKEN`, `TELEGRAM_CHAT_ID`

@@ -311,6 +311,18 @@ def genel_cikar(b):
 
 
 # ============ gönderim ============
+AYLAR = ("January", "February", "March", "April", "May", "June", "July", "August",
+         "September", "October", "November", "December")
+
+
+def ayrac(token, chat_id, metin, kuru):
+    """Günün başına ve sonuna konan ayraç mesajı."""
+    if kuru:
+        print(metin)
+    else:
+        tg(token, "sendMessage", chat_id=chat_id, text=metin)
+
+
 def parcala(metin, n=4000):
     parca, simdi = [], ""
     for satir in metin.split("\n"):
@@ -355,6 +367,9 @@ def main():
             continue  # anahtarı olmayanları atla
         kategoriler.setdefault(api["kategori"], []).append(api)
 
+    # gün başı: --------------------------25 October 2026----------------------
+    ayrac(token, chat_id, f"{'-' * 26}{BUGUN.day} {AYLAR[BUGUN.month - 1]} {BUGUN.year}{'-' * 22}", a.kuru)
+
     for kategori, apiler in kategoriler.items():
         ad = re.sub(r"^\d+\.\s*", "", kategori)
         emoji = next((e for k, e in EMOJI.items() if ad.startswith(k)), "📌")
@@ -383,6 +398,8 @@ def main():
         for url, baslik, yedek in medya:
             medya_gonder(token, chat_id, url, baslik, yedek, a.kuru)
         print(f"{emoji} {ad}: {len(apiler)} API, {len(medya)} görsel" + (" (kuru)" if a.kuru else " gönderildi"))
+
+    ayrac(token, chat_id, "-" * 19, a.kuru)  # gün sonu
 
 
 if __name__ == "__main__":
