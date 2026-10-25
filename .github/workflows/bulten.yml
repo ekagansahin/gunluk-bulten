@@ -2,10 +2,22 @@ name: Günlük bülten
 
 on:
   schedule:
-    # 04:20 UTC = 07:20 TSİ. GitHub zamanlanmış işleri 5-15 dk geciktirebildiği için
-    # 07:30 civarında gelmesi hedefleniyor.
-    - cron: "20 4 * * *"
-  workflow_dispatch: {}   # Actions sekmesinden elle çalıştırmak için
+    # GitHub, Ekim 2026'dan beri zamanlanmış işleri 4-8 saat geç başlatıyor (07:20 hedefi 12:00-15:00'e kaydı).
+    # Bu yüzden 20:13-04:13 UTC (23:13-07:13 TSİ) arası her saat bir deneme var. Bülten yalnızca
+    # 07:00-21:00 TSİ arasında ve o gün henüz gönderilmediyse çıkar; diğer denemeler birkaç saniyede atlanır.
+    # Gecikme ne olursa olsun 07:00'den sonraki ilk deneme gönderir (gecikme yoksa 07:13'teki).
+    - cron: "13 20-23 * * *"
+    - cron: "13 0-4 * * *"
+  workflow_dispatch:   # Actions sekmesinden elle çalıştırmak için
+    inputs:
+      zorla:
+        description: "Saat ve 'bugün gönderildi' kontrolünü atla (test için)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: gunluk-bulten
+  cancel-in-progress: false
 
 jobs:
   bulten:
@@ -15,22 +27,63 @@ jobs:
       TZ: Europe/Istanbul
       TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-      NASA_API_KEY: ${{ secrets.NASA_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Tarih ve saat (TSİ)
+        id: zaman
+        run: |
+          echo "tarih=$(date +%F)" >> "$GITHUB_OUTPUT"
+          saat=$((10#$(date +%H%M)))
+          if [ "$saat" -ge 700 ] && [ "$saat" -lt 2100 ]; then uygun=true; else uygun=false; fi
+          echo "uygun=$uygun" >> "$GITHUB_OUTPUT"
+          echo "TSİ $(date '+%F %H:%M') · gönderim penceresinde: $uygun"
 
-      - uses: actions/setup-python@v5
+      - name: Bugün gönderildi mi?
+        id: isaret
+        uses: actions/cache/restore@v4
+        with:
+          path: .gonderildi
+          key: gonderildi-${{ steps.zaman.outputs.tarih }}
+          lookup-only: true
+
+      - name: Karar
+        id: karar
+        run: |
+          if [ "${{ inputs.zorla }}" = "true" ]; then gonder=true; neden="elle zorlandı"
+          elif [ "${{ steps.isaret.outputs.cache-hit }}" = "true" ]; then gonder=false; neden="bugünün bülteni zaten gönderildi"
+          elif [ "${{ steps.zaman.outputs.uygun }}" != "true" ]; then gonder=false; neden="07:00-21:00 TSİ dışında"
+          else gonder=true; neden="gönderiliyor"; fi
+          echo "gonder=$gonder" >> "$GITHUB_OUTPUT"
+          echo "Karar: $neden"
+          echo "**Karar:** $neden" >> "$GITHUB_STEP_SUMMARY"
+
+      - if: steps.karar.outputs.gonder == 'true'
+        uses: actions/checkout@v4
+
+      - if: steps.karar.outputs.gonder == 'true'
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
 
-      - run: pip install -r requirements.txt
+      - if: steps.karar.outputs.gonder == 'true'
+        run: pip install -r requirements.txt
 
       - name: Bülteni gönder
+        if: steps.karar.outputs.gonder == 'true'
         run: python bulten.py
 
+      - name: Bugünü "gönderildi" olarak işaretle
+        if: steps.karar.outputs.gonder == 'true' && steps.isaret.outputs.cache-hit != 'true'
+        run: mkdir -p .gonderildi && date > .gonderildi/zaman
+
+      - if: steps.karar.outputs.gonder == 'true' && steps.isaret.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: .gonderildi
+          key: gonderildi-${{ steps.zaman.outputs.tarih }}
+
       - name: Ham yanıtları sakla (7 gün)
-        if: always()
+        if: always() && steps.karar.outputs.gonder == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ham-${{ github.run_id }}
